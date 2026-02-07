@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تجربة البوت المباشرة</title>
+    <style>
+        body { font-family: sans-serif; background: #e0e0e0; text-align: center; padding-top: 100px; color: #333; }
+        .box { background: white; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #075e54; margin-bottom: 10px; }
+        code { background: #eee; padding: 5px 10px; border-radius: 5px; color: #d63384; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h1>🔍 وضع التجربة (Test Mode)</h1>
+        <p>هاد الصفحة كتجرب البوت اللي عندو الـ ID:</p>
+        <p><code id="bot-id-display">...</code></p>
+        <p style="font-size: 14px; color: #666; margin-top: 20px;">شوف لتحت 👇 وجرب تهضر معاه.</p>
+    </div>
+
+    <script>
+        // 1. قراءة الـ ID من الرابط (URL Parameter)
+        const urlParams = new URLSearchParams(window.location.search);
+        const botId = urlParams.get('id');
+
+        if (botId) {
+            document.getElementById('bot-id-display').innerText = botId;
+
+            // 2. إنشاء السكريبت ديناميكياً
+            const script = document.createElement('script');
+            script.src = "/widget.js"; // كنجيبو الويدجيت من نفس السيرفر
+            script.setAttribute("data-id", botId); // كنعطيوه الـ ID
+            document.body.appendChild(script);
+
+        } else {
+            document.getElementById('bot-id-display').innerText = "❌ مكاينش ID فالرابط!";
+            document.body.innerHTML += "<p style='color:red'>عافاك دخل من الداشبورد باش تجرب.</p>";
+        }
+    </script>
+
+</body>
+</html>
