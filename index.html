@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wssel Dashboard | لوحة التحكم</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #075e54; --secondary: #128c7e; --accent: #25d366; --bg: #f0f2f5; }
+        body { font-family: 'Tajawal', sans-serif; background: var(--bg); margin: 0; padding: 20px; text-align: center; }
+
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        h1 { color: var(--primary); margin-bottom: 5px; }
+        p { color: #666; margin-bottom: 20px; }
+
+        /* Tabs Navigation */
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .tab-btn { padding: 10px 20px; background: none; border: none; font-size: 16px; cursor: pointer; border-radius: 5px; font-weight: bold; color: #888; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        /* Sections */
+        .section { display: none; animation: fadeIn 0.5s; }
+        .section.active { display: block; }
+
+        /* Form Elements */
+        textarea { width: 100%; height: 120px; padding: 15px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; font-family: inherit; margin-bottom: 20px; resize: vertical; }
+        textarea:focus { outline: none; border-color: var(--secondary); }
+
+        button.action-btn { background: var(--primary); color: white; border: none; padding: 15px 40px; font-size: 18px; border-radius: 50px; cursor: pointer; transition: 0.3s; width: 100%; font-weight: bold; }
+        button.action-btn:hover { background: var(--secondary); transform: translateY(-2px); }
+
+        /* Result Areas */
+        #qr-container img { margin-top: 20px; border: 5px solid var(--primary); border-radius: 10px; max-width: 250px; }
+        .code-box { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 8px; text-align: left; direction: ltr; margin-top: 20px; font-family: monospace; overflow-x: auto; position: relative; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🚀 منصة Wssel الذكية</h1>
+        <p>تحكم في المساعد الذكي الخاص بك (واتساب أو موقع إلكتروني)</p>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('whatsapp')">📱 بوت واتساب</button>
+            <button class="tab-btn" onclick="switchTab('website')">🌐 بوت الموقع (Widget)</button>
+        </div>
+
+        <div id="whatsapp-section" class="section active">
+            <h3>ربط واتساب بالذكاء الاصطناعي</h3>
+            <p>أدخل وصف البوت وسيقوم بالرد تلقائياً على رسائل واتساب.</p>
+
+            <textarea id="waPrompt" placeholder="مثال: أنت مساعد شخصي، اسمك كريم. تتحدث بلهجة مغربية وتجيب باختصار..."></textarea>
+            <button class="action-btn" onclick="startWhatsAppBot()">🔗 ربط واتساب الآن</button>
+
+            <div id="wa-status" style="margin-top:15px; font-weight:bold; color:var(--primary);"></div>
+            <div id="qr-container" style="display:none;">
+                <p>سيكاني هاد الكود بـ WhatsApp:</p>
+                <img id="qrImage" src="" alt="QR Code">
+            </div>
+        </div>
+
+        <div id="website-section" class="section">
+            <h3>إنشاء أيقونة شات للموقع</h3>
+            <p>أنشئ بوت خاص بموقعك واحصل على كود التثبيت.</p>
+
+            <textarea id="webPrompt" placeholder="مثال: أنت بائع في متجر ملابس. ساعد الزبائن في اختيار المقاس المناسب..."></textarea>
+            <button class="action-btn" onclick="createWebBot()">✨ توليد كود الموقع</button>
+
+            <div id="web-result" style="display:none; margin-top:20px;">
+                <p style="color:var(--accent); font-weight:bold;">✅ تم إنشاء البوت! انسخ هذا الكود:</p>
+                <div class="code-box">
+                    <code id="codeOutput">...</code>
+                </div>
+                <br>
+                <a href="#" id="testLink" target="_blank" style="color:var(--primary); font-weight:bold;">🔍 تجربة البوت (Live Test)</a>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const socket = io();
+
+        // --- Tab Switching ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabName + '-section').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // --- 1. WhatsApp Logic ---
+        function startWhatsAppBot() {
+            const prompt = document.getElementById('waPrompt').value;
+            if(!prompt) return alert("كتب الوصف ديال واتساب بعدا!");
+
+            document.getElementById('wa-status').innerText = "⏳ جاري تحضير البوت...";
+            socket.emit('start_bot', prompt);
+        }
+
+        socket.on('qr_code', (url) => {
+            document.getElementById('wa-status').innerText = "📸 سيكاني الكود دابا!";
+            const container = document.getElementById('qr-container');
+            container.style.display = 'block';
+            document.getElementById('qrImage').src = url;
+        });
+
+        socket.on('bot_ready', () => {
+            document.getElementById('qr-container').style.display = 'none';
+            document.getElementById('wa-status').innerText = "✅ واتساب خدام دابا (Online)!";
+            alert("مبروك! واتساب تكونيكطا بنجاح.");
+        });
+
+        // --- 2. Web Widget Logic ---
+        async function createWebBot() {
+            const prompt = document.getElementById('webPrompt').value;
+            if(!prompt) return alert("كتب الوصف ديال السيت بعدا!");
+
+            const btn = document.querySelector('#website-section button');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ جاري الصنع...";
+            btn.disabled = true;
+
+            try {
+                // نعيطو للـ API الجديد اللي زدنا فـ server.js
+                const response = await fetch('/create-web-bot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                const data = await response.json();
+
+                // نوجدو الكود والرابط
+                const host = window.location.origin;
+                const scriptCode = `<script src="${host}/widget.js" data-id="${data.botId}"><\/script>`;
+
+                // نبينو النتيجة
+                document.getElementById('codeOutput').innerText = scriptCode;
+                document.getElementById('web-result').style.display = 'block';
+
+                // نقادو رابط التيست
+                document.getElementById('testLink').href = `${host}/test.html?id=${data.botId}`;
+
+            } catch (err) {
+                console.error(err);
+                alert("وقع شي مشكل فالاتصال.");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
